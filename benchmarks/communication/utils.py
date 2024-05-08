@@ -235,4 +235,5 @@ def benchmark_parser():
                         default=.3,
                         help='Proportion of max available GPU memory to use for single-size evals')
     parser.add_argument("--debug", action="store_true", help='Enables all_to_all debug prints')
+    parser.add_argument("--device", type=str, default=DEFAULT_DEVICE, help='target device')
     return parser
