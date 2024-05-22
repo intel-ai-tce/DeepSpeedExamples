@@ -14,7 +14,10 @@ from communication.constants import *
 from deepspeed.accelerator import get_accelerator
 
 
-def timed_all_reduce(input, start_event, end_event, args):
+def timed_all_reduce(input, start_event, end_event, args, device):
+    if device == "cpu":
+        print_rank_0(f"No Event support on CPU to measure time for now")
+        return
     if args.dist == 'torch':
         import torch.distributed as dist
     elif args.dist == 'deepspeed':
@@ -63,7 +66,10 @@ def run_all_reduce(local_rank, args, device):
     if device == "xpu":
         start_event = torch.xpu.Event(enable_timing=True)
         end_event = torch.xpu.Event(enable_timing=True)
-    elif device == "cuda":
+    elif device == "cpu":
+        start_event = torch.cpu.Event()
+        end_event = torch.cpu.Event()
+    else:
         start_event = torch.cuda.Event(enable_timing=True)
         end_event = torch.cuda.Event(enable_timing=True)
 
@@ -90,10 +96,7 @@ def run_all_reduce(local_rank, args, device):
                 else:
                     raise e
             sync_all()
-            if device != "cpu":
-                timed_all_reduce(input, start_event, end_event, args)
-            else:
-                print_rank_0(f"No Event support on CPU to measure time for now")
+            timed_all_reduce(input, start_event, end_event, args, device)
     else:
         # Send the biggest message size our GPUs can fit. If you're facing OOM errors, reduce the mem_factor
         # Don't need output tensor, so we double mem_factor
@@ -115,11 +118,7 @@ def run_all_reduce(local_rank, args, device):
             else:
                 raise e
         sync_all()
-        if device != "cpu":
-            timed_all_reduce(input, start_event, end_event, args)
-        else:
-            print_rank_0(f"No Event support on CPU to measure time for now")
-        #timed_all_reduce(input, start_event, end_event, args)
+        timed_all_reduce(input, start_event, end_event, args, device)
 
 
 if __name__ == "__main__":
