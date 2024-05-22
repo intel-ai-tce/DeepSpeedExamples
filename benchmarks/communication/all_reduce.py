@@ -92,6 +92,8 @@ def run_all_reduce(local_rank, args, device):
             sync_all()
             if device != "cpu":
                 timed_all_reduce(input, start_event, end_event, args)
+            else:
+                print_rank_0(f"No Event support on CPU to measure time for now")
     else:
         # Send the biggest message size our GPUs can fit. If you're facing OOM errors, reduce the mem_factor
         # Don't need output tensor, so we double mem_factor
@@ -113,6 +115,10 @@ def run_all_reduce(local_rank, args, device):
             else:
                 raise e
         sync_all()
+        if device != "cpu":
+            timed_all_reduce(input, start_event, end_event, args)
+        else:
+            print_rank_0(f"No Event support on CPU to measure time for now")
         #timed_all_reduce(input, start_event, end_event, args)
 
 

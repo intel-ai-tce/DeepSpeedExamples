@@ -13,6 +13,7 @@ function nw_config()
     worker=$1
     omp_worker=$2
     get_hw_info
+
     if [ $number_sockets != 1 ]; then
         ccl_cpu_list=$(seq -s, $((cpu_per_socket - worker/number_sockets)) $((cpu_per_socket - 1))),$(seq -s, $((number_cores - worker/number_sockets)) $((number_cores - 1)))
         omp_cpu_list=$(seq -s, $((0)) $((omp_worker - 1))),$(seq -s, $((cpu_per_socket)) $((cpu_per_socket + omp_worker -1)))
@@ -23,8 +24,8 @@ function nw_config()
     #export CCL_LOG_LEVEL=debug
     #export CCL_WORKER_AFFINITY=auto
     export CCL_WORKER_AFFINITY=$ccl_cpu_list
-    export CCL_WORKER_COUNT=$worker
-    export PSDH_RCMD_TYPE=ssh
+    export CCL_WORKER_COUNT=$((worker/number_sockets))
+    #export PSDH_RCMD_TYPE=ssh
     export CCL_ALLREDUCE=rabenseifner # Other algorithms inlcude nreduce, ring and recursive_doubling. Rabenseifner algorithm is more friendly for latency sensitive workload
     #export CCL_ATL_TRANSPORT=ofi #Other option is ofi
     export CCL_ATL_TRANSPORT=mpi #Other option is ofi
@@ -42,15 +43,16 @@ function build_launch_args_fi_tcp(){
     margs="$margs --genv CCL_ATL_TRANSPORT=$CCL_ATL_TRANSPORT"   # Select the transport for inter-process communications
     margs="$margs --genv I_MPI_PIN=0"
     margs="$margs --genv I_MPI_DEBUG=121"
-    margs="$margs --genv FI_LOG_LEVEL=debug"
+    #margs="$margs --genv FI_LOG_LEVEL=debug"
     margs="$margs --genv FI_PROVIDER=tcp"
     margs="$margs --genv FI_TCP_IFACE=${MASTER_NET_IF}"
     margs="$margs --genv I_MPI_OFI_PROVIDER=tcp"
     margs="$margs --genv I_MPI_FABRICS=ofi"
     margs="$margs --genv I_MPI_HYDRA_IFACE=${MASTER_NET_IF}"
     margs="$margs --genv CCL_KVS_IFACE=${MASTER_NET_IF}"
-    margs="$margs --genv I_MPI_PLATFORM=icx"
-    margs="$margs --genv FI_PROVIDER_PATH=/home/ubuntu/.local/lib/python3.10/site-packages/oneccl_bindings_for_pytorch/lib/prov/"  # Specify the location of the installed PSM3 provider, when use torch-ccl the version in torch-ccl enviroment will be used
+    margs="$margs --genv PDSH_RCMD_TYPE=ssh"
+    #margs="$margs --genv I_MPI_PLATFORM=icx"
+    #margs="$margs --genv FI_PROVIDER_PATH=/home/ubuntu/.local/lib/python3.10/site-packages/oneccl_bindings_for_pytorch/lib/prov/"  # Specify the location of the installed PSM3 provider, when use torch-ccl the version in torch-ccl enviroment will be used
 }
 
 
@@ -86,7 +88,7 @@ WORKDIR=`pwd`
 source /home/ubuntu/.local/lib/python3.10/site-packages/oneccl_bindings_for_pytorch/env/setvars.sh
 export LD_LIBRARY_PATH=/home/ubuntu/.local/lib/python3.10/site-packages/oneccl_bindings_for_pytorch/lib/:${LD_LIBRARY_PATH}
 #export MASTER_NET_IF=eth0
-export MASTER_NET_IF=enp39s0
+export MASTER_NET_IF=eth0
 export MASTER_ADDR=$(ifconfig $MASTER_NET_IF | grep 'inet ' | awk '{print $2}')
 export MASTER_PORT=29500
 echo $MASTER_ADDR
@@ -100,7 +102,7 @@ output=32
 input=32
 num_iter=10
 warmup=2
-ONECCL_NUM_WORKERS=1  ## You could tune the worker number for your workload
+ONECCL_NUM_WORKERS=2  ## You could tune the worker number for your workload
 
 get_hw_info
 OMP_NUM_THREADS=$((cpu_per_socket - ONECCL_NUM_WORKERS/number_sockets)) # On a 56c socket system, leave some cores for CCL worker and leave some cores idle to reduce stragger effect
