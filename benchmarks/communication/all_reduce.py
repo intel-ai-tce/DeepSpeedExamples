@@ -13,6 +13,9 @@ from communication.utils import *
 from communication.constants import *
 from deepspeed.accelerator import get_accelerator
 
+# Habana code to import Habana PyTorch and set device to Gaudi HPU
+import habana_frameworks.torch.core as htcore
+
 
 def timed_all_reduce(input, start_event, end_event, args):
     if args.device == "cpu":
@@ -69,6 +72,9 @@ def run_all_reduce(local_rank, args):
     elif args.device == "cpu":
         start_event = torch.cpu.Event()
         end_event = torch.cpu.Event()
+    elif args.device == "hpu":
+        start_event = torch.hpu.Event()
+        end_event = torch.hpu.Event()
     else:
         start_event = torch.cuda.Event(enable_timing=True)
         end_event = torch.cuda.Event(enable_timing=True)
